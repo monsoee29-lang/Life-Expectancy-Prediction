@@ -6,6 +6,13 @@ Developed by: Ei Mon Soe
 
 Major: Statistics and Data Science (Parami University)
 
+# 🔗 Quick Links
+
+🚀 Live Web Application: https://life-expectancy-prediction-vqmqblzyvjlwalhwmwwxbi.streamlit.app/ 
+
+📰 University Publication: https://www.parami.edu.mm/post/predicting-life-expectancy-a-student-built-app-turns-global-health-data-into-insight
+
+
 📌 Project Overview
 
 This project leverages Machine Learning to predict life expectancy based on health, immunization, and socio-economic factors. Using a dataset sourced from Kaggle (originally provided by the World Health Organization), the goal was to transform complex global health data into an intuitive tool that provides immediate insights into a country’s health profile.
