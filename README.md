@@ -6,7 +6,7 @@ Developed by: Ei Mon Soe
 
 Major: Statistics and Data Science (Parami University)
 
-# 🔗 Quick Links
+# Quick Links
 
 🚀 Live Web Application: https://life-expectancy-prediction-vqmqblzyvjlwalhwmwwxbi.streamlit.app/ 
 
