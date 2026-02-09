@@ -1,112 +1,158 @@
+
 import pickle
 import streamlit as st
 import pandas as pd
 from PIL import Image
 
-#Load trained model
+#Load trained model package
 with open("life_expectancy_app.pkl", "rb") as f:
     model_package = pickle.load(f)
 
 model = model_package["model"]
-le = model_package["label_encoder"]
+encoders = model_package["encoders"] 
 columns_order = model_package["columns"]
+country_status_map = model_package.get("country_status_map", {})
 
-#App Title
-st.title("🌍 Life Expectancy Prediction App")
+#Extract specific encoders
+le_country = encoders["Country"]
+le_status = encoders["Status"]
+
+#Sidebar (Student info and logo)
+st.sidebar.markdown("---")
 try:
-    header_img = Image.open("images/life_banner.jpg")
-    st.image(header_img, use_container_width=True)
-except Exception as e:
-    st.warning("Banner image not found. Please place 'life_banner.jpg' in the images folder.")
+    logo = Image.open("images/my_photo.png") 
+    st.sidebar.image(logo, use_container_width=True)
+except Exception:
+    st.sidebar.error("Logo not found.")
+
+st.sidebar.subheader("Student Information")
+st.sidebar.markdown("""
+**Name:** Ei Mon Soe<br>
+**Major:** Statistics and Data Science<br>
+**University:** PARAMI University
+""", unsafe_allow_html=True)
+
+st.sidebar.markdown("---")
 
 st.sidebar.header("How it works")
 st.sidebar.markdown("""
-1. Input immunization factors, mortality factors, and socio-economic information.  
-2. Click **Predict Life Expectancy**.  
-3. See life stage:
-   - Critical 🔴, 
-   - At Risk 🟠,
-   - Unhealthy 🟢, and 
-   - Healthy 🔵.  
+1. Select your **Country** and it will automactically select **Status**.
+2. Input immunization, mortality, and socio-economic factors.  
+3. Click Predict.
+4. See life stage:
+   - **Critical** 🔴
+   - **At Risk** 🟠
+   - **Unhealthy** 🟢
+   - **Healthy** 🔵
 """)
 
-#High Importance
-Schooling = st.slider("📚 Schooling - Years ", min_value=0.0, value=12.0, step=0.1)
-Income_comp = st.slider("💵 Income Composition - Human Development Index (HDI)", min_value=0.0, max_value=1.0, value=0.5, step=0.01)
-GDP = st.number_input("💰 GDP per Capita (USD)", min_value=0.0, value=5000.0, step=100.0)
-Immunization = st.slider("💉 Immunization - Average of Hepatitis B, Polio, Diphtheria", min_value=0.0, max_value=100.0, value=95.0)
-Alcohol = st.selectbox("🍷 Alcohol - Consumption per Liters", ["None", "Low (0-2)", "Moderate (2-5)", "High (>5)"])
-Adult_Mortality = st.selectbox("Adult Mortality", ["Low (<150)", "Medium (150-250)", "High (>250)"])
-HIV_AIDS = st.number_input("HIV/AIDS - Deaths per 1000 live births", min_value=0.0, value=0.1, step=0.01)
-BMI = st.number_input("BMI - Body Mass Index", min_value=0.0, value=25.0, step=0.1)
+#App Title
+st.title("🌍 Life Expectancy Prediction App")
+st.subheader("Geographic Context")
+col_a, col_b = st.columns(2)
 
-#Medium Importance
-percentage_expenditure = st.selectbox("🏥 Health Expenditure per Capita", ["Low (<5%)", "Medium (5-10%)", "High (>10%)"])
-Total_expenditure = st.selectbox("🏛️ Government Health Spending", ["Low (<5%)", "Medium (5-10%)", "High (>10%)"])
-under_five = st.selectbox("🧒 Under-Five Deaths", ["Low (<20)", "Medium (20-100)", "High (>100)"])
+with col_a:
+    country_list = list(le_country.classes_)
+    selected_country = st.selectbox("📍 Select Country", country_list)
 
-#Low Importance
-thinness_mean = st.number_input("👶 Prevalence of Thinness", min_value=0.0, value=0.2, step=0.01)
-Status = st.selectbox("🌎 Country Status", ["Developed", "Developing"])
+with col_b:
+    suggested_status = country_status_map.get(selected_country, "Developing")
+    status_list = list(le_status.classes_)
+    status_idx = status_list.index(suggested_status)
+    selected_status = st.selectbox(
+        "🌎 Country Status", 
+        status_list, 
+        index=status_idx, 
+        disabled=True,
+        help="The status is automatically set based on the selected country's historical data.")
 
-Status_encoded = le.transform([Status])[0]
+st.markdown("---")
+st.subheader("Health & Socio-Economic Indicators")
+col1, col2 = st.columns(2)
 
-adult_mortality_map = {"Low (<150)": 100, "Medium (150-250)": 200, "High (>250)": 300}
-alcohol_map = {"None": 0.0, "Low (0-2)": 1.0, "Moderate (2-5)": 3.0, "High (>5)": 6.0}
-percentage_map = {"Low (<5%)": 2.0, "Medium (5-10%)": 7.0, "High (>10%)": 12.0}
-total_exp_map = {"Low (<5%)": 2.0, "Medium (5-10%)": 7.0, "High (>10%)": 12.0}
-under_five_map = {"Low (<20)": 10, "Medium (20-100)": 50, "High (>100)": 150}
+with col1:
+    Schooling = st.slider("📚 Schooling", min_value=0.0, max_value=20.0, value=12.0, step=0.1)
+    Income_comp = st.slider("💵 Income Composition", min_value=0.0, max_value=0.9, value=0.6, step=0.01)
+    GDP = st.number_input("💰 GDP per Capita", min_value=0.0, value=5000.0, step=1.0)
+    Immunization = st.slider("Immunization", min_value=0.0, max_value=100.0, value=95.0)
 
-Adult_Mortality_val = adult_mortality_map[Adult_Mortality]
-Alcohol_val = alcohol_map[Alcohol]
-percentage_val = percentage_map[percentage_expenditure]
-Total_expenditure_val = total_exp_map[Total_expenditure]
-under_five_val = under_five_map[under_five]
+with col2:
+    Alcohol = st.slider("🍷 Alcohol Consumption", min_value=0.0, max_value=17.0, value=4.0)
+    Adult_Mortality = st.number_input("💀 Adult Mortality", min_value=1.0, max_value=1000.0, value=150.0, step=1.0)
+    HIV_AIDS = st.number_input("🎗️ HIV/AIDS Deaths", min_value=0.0, value=0.1, step=0.01)
+    BMI = st.slider("⚖️ Average Body Mass", min_value=1.0, max_value=87.0, value=25.0)
 
+st.markdown("---")
+col3, col4 = st.columns(2)
+with col3:
+    percentage_expenditure = st.slider("🏥 Health Expenditure", min_value=0.0, max_value=30.0, value=5.0)
+    Total_expenditure = st.slider("🏛️ Government Health Spending", min_value=0.0, max_value=20.0, value=6.0)
+with col4:
+    under_five = st.number_input("🧒 Under-Five Deaths", min_value=0.0, value=42.0, step=1.0)
+    thinness_mean = st.slider("👶 Thinness Mean", min_value=0.0, max_value=30.0, value=5.0)
+    
+country_encoded = le_country.transform([selected_country])[0]
+status_encoded = le_status.transform([selected_status])[0]
 
 input_data = pd.DataFrame({
-    "Adult Mortality": [Adult_Mortality_val],
-    "Alcohol": [Alcohol_val],
-    "percentage expenditure": [percentage_val],
+    "Country_encoded": [country_encoded],
+    "Status_encoded": [status_encoded],
+    "Adult Mortality": [Adult_Mortality],
+    "Alcohol": [Alcohol],
+    "percentage expenditure": [percentage_expenditure],
     " BMI ": [BMI],
-    "under-five deaths ": [under_five_val],
-    "Total expenditure": [Total_expenditure_val],
+    "under-five deaths ": [under_five],
+    "Total expenditure": [Total_expenditure],
     " HIV/AIDS": [HIV_AIDS],
     "GDP": [GDP],
     "Income composition of resources": [Income_comp],
     "Schooling": [Schooling],
-    "Status_encoded": [Status_encoded],
     "Immunization": [Immunization],
     "thinness_mean": [thinness_mean]
 })
+#Reorder columns to match model training exactly
 input_data = input_data[columns_order]
 
-#Prediction button
+st.markdown("---")
+st.subheader("Summary of Selections")
+st.info("The values below update instantly as you adjust the inputs.")
+
+summary_df = pd.DataFrame({
+    "Factor": [
+        "Country", "Status", "Adult Mortality", "Alcohol", 
+        "Health Expenditure (%)", "Average Body Mass", "Under-Five Deaths", 
+        "Government Health Spending", "HIV/AIDS Deaths", "GDP per Capita", 
+        "Income Composition", "Schooling", "Immunization Index", "Thinness Mean"
+    ],
+    "Your Selection": [
+        selected_country, selected_status, Adult_Mortality, f"{Alcohol} L",
+        f"{percentage_expenditure}%", BMI, under_five, Total_expenditure,
+        HIV_AIDS, f"${GDP:,.2f}", Income_comp, f"{Schooling} yrs",
+        f"{Immunization}%", thinness_mean
+    ]
+})
+st.table(summary_df)
+
+#Prediction Logic
 if st.button("Predict Life Expectancy"):
     try:
         prediction = model.predict(input_data)[0]
-        rounded_prediction = round(prediction)
-        st.success(f"Predicted Life Expectancy: **{rounded_prediction} years**")
-#Categorize into four health stages 
-        if prediction <= 45:
-            health_stage = "Critical 🔴"
-            image = "critical_image.jpg"  
-        elif prediction <= 55:
-            health_stage = "At Risk 🟠"
-            image = "at_risk_image.jpg"  
-        elif prediction <= 70:
-            health_stage = "UnHealthy 🟢"
-            image = "unhealthy_image.jpg"  
-        else:
-            health_stage = "Healthy 🔵"
-            image = "healthy_image.jpg"  
+        st.markdown("---")
+        st.success(f"Predicted Life Expectancy: **{round(prediction, 2)} years**")
+        
+        # Health stage logic
+        if prediction <= 45: health_stage, image = "Critical 🔴", "critical_image.jpg"
+        elif prediction <= 55: health_stage, image = "At Risk 🟠", "at_risk_image.jpg"
+        elif prediction <= 70: health_stage, image = "Unhealthy 🟢", "unhealthy_image.jpg"
+        else: health_stage, image = "Healthy 🔵", "healthy_image.jpg"
 
         st.write(f"Health Stage: **{health_stage}**")
-        img = Image.open(f"images/{image}")
-        img = img.resize((300, 300))
-        st.image(img, use_container_width=False)
+        
+        #Display Image
+        try:
+            img = Image.open(f"images/{image}").resize((300, 300))
+            st.image(img)
+        except:
+            st.info("Stage image not found.")    
     except Exception as e:
-        st.error(f"Prediction failed: {e}")
-
-
-
+        st.error(f"Error: {e}")
